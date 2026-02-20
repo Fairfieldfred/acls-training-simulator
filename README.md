@@ -52,9 +52,10 @@ A comprehensive Advanced Cardiac Life Support (ACLS) training simulator built wi
 - Dart 3.0.0 or higher
 
 ### Setup
-1. Navigate to the project directory:
+1. Clone the repository:
    ```bash
-   cd /workspace/project/acls_simulator
+   git clone https://github.com/Fairfieldfred/acls-training-simulator.git
+   cd acls-training-simulator
    ```
 
 2. Get dependencies:
@@ -145,7 +146,7 @@ Grades:
 
 ## Future Enhancements (Phase 4)
 
-See `/workspace/project/ACLS_PHASE4_PLAN.md` for detailed enhancement roadmap including:
+Planned features include:
 - Audio feedback system (metronome, voice prompts)
 - Pediatric ACLS scenarios
 - Team-based training mode
@@ -154,12 +155,6 @@ See `/workspace/project/ACLS_PHASE4_PLAN.md` for detailed enhancement roadmap in
 - Cloud integration (user accounts, leaderboards)
 - Bluetooth manikin support
 - Video replay system
-
-## Documentation
-
-- **Build Plan**: `/workspace/project/acls_app_build_plan.md`
-- **Phase 1-3 Summary**: `/workspace/project/ACLS_COMPLETE_SUMMARY.md`
-- **Phase 4 Plan**: `/workspace/project/ACLS_PHASE4_PLAN.md`
 
 ## License
 
