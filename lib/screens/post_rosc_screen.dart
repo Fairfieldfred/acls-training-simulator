@@ -13,11 +13,14 @@ class PostRoscScreen extends StatefulWidget {
       _PostRoscScreenState();
 }
 
-class _PostRoscScreenState extends State<PostRoscScreen> {
+class _PostRoscScreenState extends State<PostRoscScreen>
+    with SingleTickerProviderStateMixin {
   double _o2Percentage = 100;
   int _sbp = 80;
   int _o2Sat = 88;
   bool _ecgObtained = false;
+  bool _showOverlay = true;
+  late final AnimationController _overlayCtrl;
   bool _stemiDetected = false;
   bool _cathLabActivated = false;
   bool _tempManaged = false;
@@ -29,6 +32,19 @@ class _PostRoscScreenState extends State<PostRoscScreen> {
   void initState() {
     super.initState();
     _stemiDetected = _random.nextBool();
+    _overlayCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    );
+    _overlayCtrl.forward().then((_) {
+      if (mounted) setState(() => _showOverlay = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _overlayCtrl.dispose();
+    super.dispose();
   }
 
   void _optimizeO2(double value) {
@@ -91,7 +107,9 @@ class _PostRoscScreenState extends State<PostRoscScreen> {
         title: const Text('Post-ROSC Care'),
         automaticallyImplyLeading: false,
       ),
-      body: SingleChildScrollView(
+      body: Stack(
+        children: [
+          SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment:
@@ -439,6 +457,59 @@ class _PostRoscScreenState extends State<PostRoscScreen> {
             ),
           ],
         ),
+      ),
+          // ROSC achievement overlay animation
+          if (_showOverlay)
+            AnimatedBuilder(
+              animation: _overlayCtrl,
+              builder: (context, child) {
+                final opacity =
+                    (1.0 - _overlayCtrl.value)
+                        .clamp(0.0, 1.0);
+                if (opacity <= 0) {
+                  return const SizedBox.shrink();
+                }
+                return Positioned.fill(
+                  child: Container(
+                    color: Colors.green.withValues(
+                      alpha: opacity * 0.85,
+                    ),
+                    child: Center(
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Column(
+                          mainAxisSize:
+                              MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.favorite,
+                              size: 80,
+                              color: Colors.white
+                                  .withValues(
+                                alpha: opacity,
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 16,
+                            ),
+                            const Text(
+                              'ROSC ACHIEVED',
+                              style: TextStyle(
+                                fontSize: 36,
+                                fontWeight:
+                                    FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
     );
   }

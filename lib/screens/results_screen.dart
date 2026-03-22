@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/event_log_model.dart';
@@ -269,7 +270,26 @@ class ResultsScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () =>
+                        _exportResults(
+                      context,
+                      service,
+                      performance,
+                    ),
+                    icon: const Icon(
+                      Icons.copy,
+                    ),
+                    label: const Text('Export'),
+                    style: ElevatedButton.styleFrom(
+                      padding:
+                          const EdgeInsets.all(16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
@@ -294,6 +314,40 @@ class ResultsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _exportResults(
+    BuildContext context,
+    SimulationService service,
+    dynamic performance,
+  ) {
+    final buf = StringBuffer();
+    buf.writeln('ACLS Simulation Report');
+    buf.writeln('=====================');
+    buf.writeln(
+      'Scenario: ${service.currentScenario?.title}',
+    );
+    buf.writeln('Grade: ${performance.grade} '
+        '(${performance.percentage.toStringAsFixed(0)}%)');
+    buf.writeln('Time: ${service.formattedCodeTime}');
+    buf.writeln(
+      'Shocks: ${performance.metrics.shocksDelivered}',
+    );
+    buf.writeln(
+      'ROSC: ${performance.metrics.achievedROSC ? "Yes" : "No"}',
+    );
+    buf.writeln('');
+    buf.writeln('Timeline:');
+    for (final e in service.eventLog) {
+      buf.writeln('  ${e.formattedTime} ${e.description}');
+    }
+
+    Clipboard.setData(ClipboardData(text: buf.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Results copied to clipboard'),
       ),
     );
   }

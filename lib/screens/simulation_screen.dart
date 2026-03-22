@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../services/simulation_service.dart';
+import '../services/theme_service.dart';
 import '../widgets/airway_panel.dart';
 import '../widgets/cpr_controls.dart';
 import '../widgets/defibrillator_panel.dart';
@@ -90,6 +91,18 @@ class _SimulationScreenState
               actions: [
                 IconButton(
                   icon: Icon(
+                    context.watch<ThemeService>()
+                            .isDark
+                        ? Icons.light_mode
+                        : Icons.dark_mode,
+                  ),
+                  onPressed: context
+                      .read<ThemeService>()
+                      .toggleTheme,
+                  tooltip: 'Toggle Theme',
+                ),
+                IconButton(
+                  icon: Icon(
                     _showReference
                         ? Icons.menu_book
                         : Icons.menu_book_outlined,
@@ -127,82 +140,140 @@ class _SimulationScreenState
                   isProtocol: isProtocol,
                 ),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding:
-                        const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment
-                              .stretch,
-                      children: [
-                        Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment
-                                  .start,
-                          children: [
-                            Expanded(
-                              child: ECGMonitor(
-                                rhythm: service
-                                    .patientState
-                                    .rhythm,
-                              ),
-                            ),
-                            const SizedBox(
-                              width: 12,
-                            ),
-                            const Expanded(
-                              flex: 2,
-                              child:
-                                  PatientAvatar(),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        const TimerDisplay(),
-                        const SizedBox(height: 16),
-                        if (!isPulsed)
-                          const CPRControls(),
-                        if (!isPulsed)
-                          const SizedBox(
-                            height: 16,
-                          ),
-                        const DefibrillatorPanel(),
-                        const SizedBox(height: 16),
-                        const Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment
-                                  .start,
-                          children: [
-                            Expanded(
-                              child:
-                                  MedicationPanel(),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: AirwayPanel(),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        const
-                            ReversibleCausesPanel(),
-                        const SizedBox(height: 16),
-                        if (_showReference)
-                          const ReferencePanel(),
-                        if (_showReference)
-                          const SizedBox(
-                            height: 16,
-                          ),
-                        const EventLogPanel(),
-                        const SizedBox(height: 80),
-                      ],
-                    ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide =
+                          constraints.maxWidth > 900;
+                      return _buildBody(
+                        service: service,
+                        isPulsed: isPulsed,
+                        isWide: isWide,
+                      );
+                    },
                   ),
                 ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildBody({
+    required SimulationService service,
+    required bool isPulsed,
+    required bool isWide,
+  }) {
+    final ecgHeight = isWide ? 200.0 : 140.0;
+    final leftColumn = [
+      SizedBox(
+        height: ecgHeight,
+        child: ECGMonitor(
+          rhythm: service.patientState.rhythm,
+        ),
+      ),
+      const SizedBox(height: 12),
+      const PatientAvatar(),
+      const SizedBox(height: 16),
+      const TimerDisplay(),
+      const SizedBox(height: 16),
+      if (!isPulsed) const CPRControls(),
+      if (!isPulsed) const SizedBox(height: 16),
+    ];
+
+    final rightColumn = [
+      const DefibrillatorPanel(),
+      const SizedBox(height: 16),
+      const MedicationPanel(),
+      const SizedBox(height: 16),
+      const AirwayPanel(),
+      const SizedBox(height: 16),
+      const ReversibleCausesPanel(),
+      const SizedBox(height: 16),
+      if (_showReference) const ReferencePanel(),
+      if (_showReference) const SizedBox(height: 16),
+      const EventLogPanel(),
+    ];
+
+    if (isWide) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.stretch,
+                children: leftColumn,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.stretch,
+                children: rightColumn,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: ecgHeight,
+                  child: ECGMonitor(
+                    rhythm:
+                        service.patientState.rhythm,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                flex: 2,
+                child: PatientAvatar(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const TimerDisplay(),
+          const SizedBox(height: 16),
+          if (!isPulsed) const CPRControls(),
+          if (!isPulsed) const SizedBox(height: 16),
+          const DefibrillatorPanel(),
+          const SizedBox(height: 16),
+          const Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              Expanded(child: MedicationPanel()),
+              SizedBox(width: 16),
+              Expanded(child: AirwayPanel()),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const ReversibleCausesPanel(),
+          const SizedBox(height: 16),
+          if (_showReference) const ReferencePanel(),
+          if (_showReference)
+            const SizedBox(height: 16),
+          const EventLogPanel(),
+          const SizedBox(height: 80),
+        ],
       ),
     );
   }
