@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../models/event_log_model.dart';
 import '../services/simulation_service.dart';
-import '../models/performance_model.dart';
 import 'home_screen.dart';
 
 class ResultsScreen extends StatelessWidget {
@@ -11,6 +12,7 @@ class ResultsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = context.watch<SimulationService>();
     final performance = service.calculatePerformance();
+    final events = service.eventLog;
 
     return Scaffold(
       appBar: AppBar(
@@ -20,11 +22,12 @@ class ResultsScreen extends StatelessWidget {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment:
+              CrossAxisAlignment.stretch,
           children: [
-            // Overall Score Card
+            // Overall Score
             Card(
-              color: _getGradeColor(performance.grade),
+              color: _gradeColor(performance.grade),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
@@ -39,9 +42,12 @@ class ResultsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
+                      mainAxisAlignment:
+                          MainAxisAlignment.center,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.baseline,
+                      textBaseline:
+                          TextBaseline.alphabetic,
                       children: [
                         Text(
                           performance.grade,
@@ -64,7 +70,8 @@ class ResultsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${performance.totalPoints} / ${performance.maxPoints} points',
+                      '${performance.totalPoints} / '
+                      '${performance.maxPoints} points',
                       style: const TextStyle(
                         fontSize: 18,
                         color: Colors.white,
@@ -86,12 +93,13 @@ class ResultsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Performance Metrics Summary
+            // Key Metrics
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'Key Metrics',
@@ -104,54 +112,67 @@ class ResultsScreen extends StatelessWidget {
                     _MetricRow(
                       icon: Icons.timer,
                       label: 'Total Time',
-                      value: service.formattedCodeTime,
+                      value:
+                          service.formattedCodeTime,
                     ),
                     _MetricRow(
                       icon: Icons.favorite,
                       label: 'Total Compressions',
-                      value: performance.metrics.totalCompressions.toString(),
+                      value: performance
+                          .metrics.totalCompressions
+                          .toString(),
                     ),
                     _MetricRow(
                       icon: Icons.air,
                       label: 'Total Ventilations',
-                      value: performance.metrics.totalVentilations.toString(),
-                    ),
-                    _MetricRow(
-                      icon: Icons.compare_arrows,
-                      label: 'CPR Ratio',
-                      value: '${performance.metrics.cprRatio.toStringAsFixed(1)}:1',
+                      value: performance
+                          .metrics.totalVentilations
+                          .toString(),
                     ),
                     _MetricRow(
                       icon: Icons.flash_on,
                       label: 'Shocks Delivered',
-                      value: performance.metrics.shocksDelivered.toString(),
+                      value: performance
+                          .metrics.shocksDelivered
+                          .toString(),
                     ),
-                    if (performance.metrics.timeToFirstShock > 0)
+                    if (performance.metrics
+                            .timeToFirstShock >
+                        0)
                       _MetricRow(
                         icon: Icons.speed,
                         label: 'Time to First Shock',
-                        value: '${performance.metrics.timeToFirstShock}s',
+                        value:
+                            '${performance.metrics.timeToFirstShock}s',
+                        benchmark: '< 30s',
+                        isGood: performance
+                                .metrics
+                                .timeToFirstShock <=
+                            30,
                       ),
-                    _MetricRow(
-                      icon: Icons.medication,
-                      label: 'Medications Given',
-                      value: performance.metrics.medicationsGiven.length.toString(),
-                    ),
-                    _MetricRow(
-                      icon: Icons.psychology,
-                      label: 'Airway Device',
-                      value: performance.metrics.airwayUsed,
-                    ),
-                    _MetricRow(
-                      icon: Icons.checklist,
-                      label: 'Reversible Causes Checked',
-                      value: '${performance.metrics.reversibleCausesChecked.values.where((v) => v).length}/12',
-                    ),
+                    if (performance.metrics
+                            .timeToFirstEpinephrine >
+                        0)
+                      _MetricRow(
+                        icon: Icons.medication,
+                        label: 'Time to First Epi',
+                        value:
+                            '${performance.metrics.timeToFirstEpinephrine}s',
+                        benchmark: '< 300s',
+                        isGood: performance
+                                .metrics
+                                .timeToFirstEpinephrine <=
+                            300,
+                      ),
                     _MetricRow(
                       icon: Icons.celebration,
                       label: 'ROSC',
-                      value: performance.metrics.achievedROSC ? 'Yes' : 'No',
-                      valueColor: performance.metrics.achievedROSC
+                      value: performance
+                              .metrics.achievedROSC
+                          ? 'Yes'
+                          : 'No',
+                      valueColor: performance
+                              .metrics.achievedROSC
                           ? Colors.green
                           : Colors.red,
                     ),
@@ -161,7 +182,7 @@ class ResultsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Performance Criteria Details
+            // Detailed Breakdown
             const Text(
               'Detailed Breakdown',
               style: TextStyle(
@@ -170,21 +191,28 @@ class ResultsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            ...performance.criteria.map((criterion) {
+            ...performance.criteria.map((c) {
               return Card(
                 child: ListTile(
                   leading: Icon(
-                    criterion.achieved ? Icons.check_circle : Icons.cancel,
-                    color: criterion.achieved ? Colors.green : Colors.red,
+                    c.achieved
+                        ? Icons.check_circle
+                        : Icons.cancel,
+                    color: c.achieved
+                        ? Colors.green
+                        : Colors.red,
                     size: 32,
                   ),
                   title: Text(
-                    criterion.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    c.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  subtitle: Text(criterion.description),
+                  subtitle: Text(c.description),
                   trailing: Text(
-                    '${criterion.achieved ? criterion.maxPoints : 0}/${criterion.maxPoints}',
+                    '${c.achieved ? c.maxPoints : 0}'
+                    '/${c.maxPoints}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -195,37 +223,28 @@ class ResultsScreen extends StatelessWidget {
             }),
             const SizedBox(height: 24),
 
-            // Medications Given
-            if (performance.metrics.medicationsGiven.isNotEmpty)
+            // Event Timeline
+            if (events.isNotEmpty) ...[
+              const Text(
+                'Event Timeline',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Medications Administered',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: performance.metrics.medicationsGiven.map((med) {
-                          return Chip(
-                            label: Text(med),
-                            backgroundColor: Colors.green[100],
-                          );
-                        }).toList(),
-                      ),
-                    ],
+                    children: events.map((e) {
+                      return _TimelineEvent(event: e);
+                    }).toList(),
                   ),
                 ),
               ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
+            ],
 
             // Action Buttons
             Row(
@@ -233,17 +252,20 @@ class ResultsScreen extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Restart same scenario
-                      final scenario = service.currentScenario;
+                      final scenario =
+                          service.currentScenario;
                       if (scenario != null) {
-                        service.startScenario(scenario);
+                        service.startScenario(
+                          scenario,
+                        );
                         Navigator.pop(context);
                       }
                     },
                     icon: const Icon(Icons.replay),
-                    label: const Text('Try Again'),
+                    label: const Text('Retry'),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(16),
+                      padding:
+                          const EdgeInsets.all(16),
                     ),
                   ),
                 ),
@@ -254,7 +276,8 @@ class ResultsScreen extends StatelessWidget {
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const HomeScreen(),
+                          builder: (context) =>
+                              const HomeScreen(),
                         ),
                         (route) => false,
                       );
@@ -262,7 +285,8 @@ class ResultsScreen extends StatelessWidget {
                     icon: const Icon(Icons.home),
                     label: const Text('Home'),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(16),
+                      padding:
+                          const EdgeInsets.all(16),
                     ),
                   ),
                 ),
@@ -274,19 +298,14 @@ class ResultsScreen extends StatelessWidget {
     );
   }
 
-  Color _getGradeColor(String grade) {
-    switch (grade) {
-      case 'A':
-        return Colors.green;
-      case 'B':
-        return Colors.lightGreen;
-      case 'C':
-        return Colors.orange;
-      case 'D':
-        return Colors.deepOrange;
-      default:
-        return Colors.red;
-    }
+  Color _gradeColor(String grade) {
+    return switch (grade) {
+      'A' => Colors.green,
+      'B' => Colors.lightGreen,
+      'C' => Colors.orange,
+      'D' => Colors.deepOrange,
+      _ => Colors.red,
+    };
   }
 }
 
@@ -295,38 +314,146 @@ class _MetricRow extends StatelessWidget {
   final String label;
   final String value;
   final Color? valueColor;
+  final String? benchmark;
+  final bool? isGood;
 
   const _MetricRow({
     required this.icon,
     required this.label,
     required this.value,
     this.valueColor,
+    this.benchmark,
+    this.isGood,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: Colors.grey[600]),
+          Icon(icon, size: 22, color: Colors.grey[600]),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 15),
             ),
           ),
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
               color: valueColor,
+            ),
+          ),
+          if (benchmark != null) ...[
+            const SizedBox(width: 8),
+            Text(
+              '(Target: $benchmark)',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[500],
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              isGood == true
+                  ? Icons.check
+                  : Icons.close,
+              size: 16,
+              color: isGood == true
+                  ? Colors.green
+                  : Colors.red,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineEvent extends StatelessWidget {
+  final SimulationEvent event;
+
+  const _TimelineEvent({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _catColor(event.category);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            event.formattedTime,
+            style: TextStyle(
+              fontSize: 13,
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[500],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              padding: event.isError
+                  ? const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    )
+                  : null,
+              decoration: event.isError
+                  ? BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius:
+                          BorderRadius.circular(4),
+                    )
+                  : null,
+              child: Text(
+                event.description,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: event.isError
+                      ? Colors.red[700]
+                      : event.isSuccess
+                          ? Colors.green[700]
+                          : Colors.grey[800],
+                  fontWeight: event.isError ||
+                          event.isSuccess
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Color _catColor(EventCategory cat) {
+    return switch (cat) {
+      EventCategory.cpr => Colors.blue,
+      EventCategory.medication => Colors.purple,
+      EventCategory.shock => Colors.orange,
+      EventCategory.airway => Colors.indigo,
+      EventCategory.assessment => Colors.teal,
+      EventCategory.rosc => Colors.green,
+      EventCategory.error => Colors.red,
+      EventCategory.info => Colors.grey,
+    };
   }
 }

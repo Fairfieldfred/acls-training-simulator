@@ -7,6 +7,7 @@ import '../widgets/airway_panel.dart';
 import '../widgets/cpr_controls.dart';
 import '../widgets/defibrillator_panel.dart';
 import '../widgets/ecg_monitor.dart';
+import '../widgets/event_log_panel.dart';
 import '../widgets/medication_panel.dart';
 import '../widgets/patient_avatar.dart';
 import '../widgets/reversible_causes_panel.dart';
@@ -141,6 +142,8 @@ class _SimulationScreenState
                         ),
                         const SizedBox(height: 16),
                         const ReversibleCausesPanel(),
+                        const SizedBox(height: 16),
+                        const EventLogPanel(),
                         const SizedBox(height: 80),
                       ],
                     ),

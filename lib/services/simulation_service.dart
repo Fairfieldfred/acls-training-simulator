@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/ecg_rhythm_model.dart';
+import '../models/event_log_model.dart';
 import '../models/medication_model.dart';
 import '../models/medication_timing_model.dart';
 import '../models/patient_model.dart';
@@ -30,6 +31,7 @@ class SimulationService extends ChangeNotifier {
   int _ventilations = 0;
   int _currentCycleCompressions = 0;
   int _currentCycleVentilations = 0;
+  int _compressionBatch = 0;
 
   // Compression rate tracking (for timing mode)
   final List<DateTime> _recentCompressionTimes = [];
@@ -40,13 +42,11 @@ class SimulationService extends ChangeNotifier {
   int _shockCount = 0;
   int? _timeToFirstShock;
 
-  // Medications — dose history replaces old string list
+  // Medications
   final List<MedicationDoseRecord> _doseHistory = [];
   final MedicationEligibilityService _eligibilityService =
       MedicationEligibilityService();
   int? _timeToFirstEpinephrine;
-
-  // ROSC probability boost from medications
   double _roscBoost = 0.0;
 
   // Post-shock CPR cycle tracking
@@ -58,12 +58,16 @@ class SimulationService extends ChangeNotifier {
   // Airway
   String _airwayDevice = 'BVM';
 
-  // Auto-CPR cycle tracking (for protocol mode)
+  // Auto-CPR
   int _autoCycleCompressions = 0;
+
+  // Event log
+  final List<SimulationEvent> _eventLog = [];
 
   final _random = Random();
 
-  // Getters
+  // ── Getters ────────────────────────────────────────────
+
   Scenario? get currentScenario => _currentScenario;
   PatientState get patientState => _patientState;
   TrainingConfig get trainingConfig => _trainingConfig;
@@ -82,9 +86,10 @@ class SimulationService extends ChangeNotifier {
   Map<String, bool> get reversibleCausesChecked =>
       _reversibleCausesChecked;
   String get airwayDevice => _airwayDevice;
-  List<MedicationDoseRecord> get doseHistory => _doseHistory;
+  List<MedicationDoseRecord> get doseHistory =>
+      _doseHistory;
+  List<SimulationEvent> get eventLog => _eventLog;
 
-  /// Backward-compatible display strings for results.
   List<String> get medicationsGiven =>
       _doseHistory.map((d) => d.displayString).toList();
 
@@ -107,11 +112,12 @@ class SimulationService extends ChangeNotifier {
     return _compressions / _ventilations;
   }
 
-  /// Compressions per minute over the last 10 seconds.
   double get compressionRate {
     if (_recentCompressionTimes.isEmpty) return 0;
     final now = DateTime.now();
-    final cutoff = now.subtract(const Duration(seconds: 10));
+    final cutoff = now.subtract(
+      const Duration(seconds: 10),
+    );
     _recentCompressionTimes
         .removeWhere((t) => t.isBefore(cutoff));
     if (_recentCompressionTimes.isEmpty) return 0;
@@ -120,7 +126,6 @@ class SimulationService extends ChangeNotifier {
 
   // ── Medication timing getters ──────────────────────────
 
-  /// Seconds since last epinephrine dose, or null if none.
   int? get secondsSinceLastEpi {
     final lastEpi = _doseHistory.lastWhereOrNull(
       (d) => d.medicationName == 'Epinephrine',
@@ -129,16 +134,12 @@ class SimulationService extends ChangeNotifier {
     return _codeSeconds - lastEpi.timeSeconds;
   }
 
-  /// Whether epinephrine is overdue (> 300s since last).
   bool get isEpiOverdue {
     final elapsed = secondsSinceLastEpi;
-    if (elapsed == null) {
-      return _codeSeconds > 60;
-    }
+    if (elapsed == null) return _codeSeconds > 60;
     return elapsed > 300;
   }
 
-  /// Seconds until next epi is due (3-min mark), or null.
   int? get nextEpiDueSeconds {
     final elapsed = secondsSinceLastEpi;
     if (elapsed == null) return null;
@@ -146,13 +147,10 @@ class SimulationService extends ChangeNotifier {
     return remaining > 0 ? remaining : 0;
   }
 
-  /// Post-shock CPR seconds (resets after each shock).
   int get postShockCprSeconds => _postShockCprSeconds;
+  bool get cprCycleComplete =>
+      _postShockCprSeconds >= 120;
 
-  /// Whether a full 2-min CPR cycle is complete.
-  bool get cprCycleComplete => _postShockCprSeconds >= 120;
-
-  /// Check eligibility for a given medication.
   MedicationEligibility getMedicationEligibility(
     Medication med,
   ) {
@@ -165,6 +163,23 @@ class SimulationService extends ChangeNotifier {
     );
   }
 
+  // ── Event logging ──────────────────────────────────────
+
+  void _log(
+    String description,
+    EventCategory category, {
+    bool isError = false,
+    bool isSuccess = false,
+  }) {
+    _eventLog.add(SimulationEvent(
+      timeSeconds: _codeSeconds,
+      description: description,
+      category: category,
+      isError: isError,
+      isSuccess: isSuccess,
+    ));
+  }
+
   // ── Scenario lifecycle ─────────────────────────────────
 
   void startScenario(
@@ -173,16 +188,18 @@ class SimulationService extends ChangeNotifier {
   }) {
     _currentScenario = scenario;
     _trainingConfig = config;
-    // Pulsed rhythms start with vitals, not arrest.
     _patientState = scenario.initialRhythm.hasPulse
-        ? PatientState.pulsedRhythm(scenario.initialRhythm)
-        : PatientState.cardiacArrest(scenario.initialRhythm);
+        ? PatientState.pulsedRhythm(
+            scenario.initialRhythm)
+        : PatientState.cardiacArrest(
+            scenario.initialRhythm);
     _codeSeconds = 0;
     _cprCycleSeconds = 0;
     _compressions = 0;
     _ventilations = 0;
     _currentCycleCompressions = 0;
     _currentCycleVentilations = 0;
+    _compressionBatch = 0;
     _shockCount = 0;
     _timeToFirstShock = null;
     _doseHistory.clear();
@@ -195,6 +212,14 @@ class SimulationService extends ChangeNotifier {
     _recentCompressionTimes.clear();
     _roscBoost = 0.0;
     _postShockCprSeconds = 0;
+    _eventLog.clear();
+
+    _log(
+      'Scenario started: ${scenario.title} '
+      '— Initial rhythm: '
+      '${scenario.initialRhythm.displayName}',
+      EventCategory.info,
+    );
 
     _startTimers();
     notifyListeners();
@@ -212,7 +237,8 @@ class SimulationService extends ChangeNotifier {
       },
     );
 
-    if (!_patientState.hasROSC) {
+    if (!_patientState.hasROSC &&
+        !_patientState.hasPulse) {
       _cprCycleTimer = Timer.periodic(
         const Duration(seconds: 1),
         (timer) {
@@ -227,7 +253,6 @@ class SimulationService extends ChangeNotifier {
     }
   }
 
-  /// Starts automatic CPR in protocol mode.
   void _startAutoCpr() {
     _autoCprTimer?.cancel();
     _autoCycleCompressions = 0;
@@ -250,11 +275,13 @@ class SimulationService extends ChangeNotifier {
     if (ratio == CprRatio.continuous) {
       _compressions++;
       _currentCycleCompressions++;
+      _compressionBatch++;
     } else {
       if (_autoCycleCompressions < ratio.compressions) {
         _compressions++;
         _currentCycleCompressions++;
         _autoCycleCompressions++;
+        _compressionBatch++;
       } else {
         _ventilations++;
         _currentCycleVentilations++;
@@ -266,6 +293,13 @@ class SimulationService extends ChangeNotifier {
         }
       }
     }
+
+    // Log every 30 compressions.
+    if (_compressionBatch >= 30) {
+      _compressionBatch = 0;
+      _log('30 compressions', EventCategory.cpr);
+    }
+
     notifyListeners();
   }
 
@@ -294,7 +328,12 @@ class SimulationService extends ChangeNotifier {
     if (!_isRunning || _patientState.hasROSC) return;
     _compressions++;
     _currentCycleCompressions++;
+    _compressionBatch++;
     _recentCompressionTimes.add(DateTime.now());
+    if (_compressionBatch >= 30) {
+      _compressionBatch = 0;
+      _log('30 compressions', EventCategory.cpr);
+    }
     notifyListeners();
   }
 
@@ -310,6 +349,10 @@ class SimulationService extends ChangeNotifier {
     _currentCycleCompressions = 0;
     _currentCycleVentilations = 0;
     _autoCycleCompressions = 0;
+    _log(
+      '2-minute CPR cycle complete',
+      EventCategory.cpr,
+    );
     notifyListeners();
   }
 
@@ -321,6 +364,11 @@ class SimulationService extends ChangeNotifier {
   Future<void> analyzeRhythm() async {
     if (!_isRunning) return;
     _pauseAutoCpr();
+    _log(
+      'Rhythm analyzed: '
+      '${_patientState.rhythm.displayName}',
+      EventCategory.assessment,
+    );
     await Future.delayed(const Duration(seconds: 2));
     _resumeAutoCpr();
     notifyListeners();
@@ -343,17 +391,26 @@ class SimulationService extends ChangeNotifier {
     _shockCount++;
     _timeToFirstShock ??= _codeSeconds;
 
+    String result = 'rhythm persists';
     if (_patientState.rhythm.isShockable) {
-      // Base ROSC probability + medication boosts.
       final baseProbability = 0.15 + _roscBoost;
       final roll = _random.nextDouble();
       if (roll < baseProbability) {
         _achieveROSC();
+        result = 'ROSC';
       } else if (_random.nextDouble() < 0.4) {
-        _patientState =
-            _patientState.copyWith(rhythm: ECGRhythm.pea);
+        _patientState = _patientState.copyWith(
+          rhythm: ECGRhythm.pea,
+        );
+        result = 'changed to PEA';
       }
     }
+
+    _log(
+      'Shock #$_shockCount delivered '
+      '(${_selectedEnergy}J) — $result',
+      EventCategory.shock,
+    );
 
     _isCharging = false;
     _postShockCprSeconds = 0;
@@ -373,12 +430,11 @@ class SimulationService extends ChangeNotifier {
     if (!_isRunning) return;
 
     final eligibility = getMedicationEligibility(med);
-
-    // If fully ineligible and not forcing, skip.
     if (!eligibility.canAdminister && !forceEarly) return;
 
-    final wasEarly = eligibility.secondsUntilEligible != null &&
-        eligibility.secondsUntilEligible! > 0;
+    final wasEarly =
+        eligibility.secondsUntilEligible != null &&
+            eligibility.secondsUntilEligible! > 0;
 
     final record = MedicationDoseRecord(
       medicationName: med.name,
@@ -389,50 +445,73 @@ class SimulationService extends ChangeNotifier {
     );
     _doseHistory.add(record);
 
-    if (med.name == 'Epinephrine') {
-      _timeToFirstEpinephrine ??= _codeSeconds;
-      // Epi boosts next shock ROSC probability.
-      if (!wasEarly) {
-        _roscBoost += 0.15;
-      }
+    // Log the administration.
+    if (wasEarly) {
+      final lastDose = _doseHistory
+          .where((d) => d.medicationName == med.name)
+          .toList();
+      final prevDose = lastDose.length >= 2
+          ? lastDose[lastDose.length - 2]
+          : null;
+      final sinceStr = prevDose != null
+          ? _fmtSec(_codeSeconds - prevDose.timeSeconds)
+          : '?';
+      _log(
+        '${med.name} ${med.dose} administered '
+        '(too early: $sinceStr since last dose)',
+        EventCategory.medication,
+        isError: true,
+      );
+    } else {
+      _log(
+        '${med.name} ${med.dose} administered',
+        EventCategory.medication,
+      );
     }
 
-    // Amiodarone 300 mg after 3rd shock.
-    if (med.name == 'Amiodarone' && med.dose == '300 mg') {
+    if (med.name == 'Epinephrine') {
+      _timeToFirstEpinephrine ??= _codeSeconds;
+      if (!wasEarly) _roscBoost += 0.15;
+    }
+
+    if (med.name == 'Amiodarone' &&
+        med.dose == '300 mg') {
       if (_shockCount >= 3) {
         _roscBoost = max(_roscBoost, 0.30);
       }
     }
 
-    // Amiodarone 150 mg 2nd dose.
-    if (med.name == 'Amiodarone' && med.dose == '150 mg') {
+    if (med.name == 'Amiodarone' &&
+        med.dose == '150 mg') {
       _roscBoost = max(_roscBoost, 0.40);
     }
 
-    // Lidocaine.
     if (med.name == 'Lidocaine') {
       _roscBoost = max(_roscBoost, 0.20);
     }
 
-    // Magnesium in torsades: delayed conversion.
     if (med.name == 'Magnesium Sulfate' &&
         _patientState.rhythm == ECGRhythm.torsades) {
-      Future.delayed(const Duration(seconds: 120), () {
-        if (_isRunning &&
-            !_patientState.hasROSC &&
-            _random.nextDouble() < 0.70) {
-          _achieveROSC();
-        }
-      });
+      Future.delayed(
+        const Duration(seconds: 120),
+        () {
+          if (_isRunning &&
+              !_patientState.hasROSC &&
+              _random.nextDouble() < 0.70) {
+            _achieveROSC();
+          }
+        },
+      );
     }
 
-    // PEA/asystole: epi has small conversion chance.
     if (med.name == 'Epinephrine' &&
         !_patientState.rhythm.isShockable &&
-        _patientState.rhythm != ECGRhythm.normalSinus) {
+        _patientState.rhythm !=
+            ECGRhythm.normalSinus) {
       if (_random.nextDouble() < 0.08) {
-        _patientState =
-            _patientState.copyWith(rhythm: ECGRhythm.pea);
+        _patientState = _patientState.copyWith(
+          rhythm: ECGRhythm.pea,
+        );
       }
     }
 
@@ -440,15 +519,23 @@ class SimulationService extends ChangeNotifier {
   }
 
   void toggleReversibleCause(String causeId) {
-    _reversibleCausesChecked[causeId] =
-        !(_reversibleCausesChecked[causeId] ?? false);
+    final wasChecked =
+        _reversibleCausesChecked[causeId] ?? false;
+    _reversibleCausesChecked[causeId] = !wasChecked;
+
+    if (!wasChecked) {
+      _log(
+        'H&T checked: $causeId',
+        EventCategory.assessment,
+      );
+    }
 
     if (_reversibleCausesChecked.values
             .where((v) => v)
             .length >=
         6) {
-      final roll = _random.nextDouble();
-      if (roll < 0.2 && !_patientState.hasROSC) {
+      if (_random.nextDouble() < 0.2 &&
+          !_patientState.hasROSC) {
         _achieveROSC();
       }
     }
@@ -458,6 +545,10 @@ class SimulationService extends ChangeNotifier {
 
   void setAirwayDevice(String device) {
     _airwayDevice = device;
+    _log(
+      'Airway: $device placed',
+      EventCategory.airway,
+    );
     notifyListeners();
   }
 
@@ -465,6 +556,11 @@ class SimulationService extends ChangeNotifier {
     _patientState = PatientState.withROSC();
     _autoCprTimer?.cancel();
     _cprCycleTimer?.cancel();
+    _log(
+      'ROSC achieved at ${_fmtSec(_codeSeconds)}',
+      EventCategory.rosc,
+      isSuccess: true,
+    );
     notifyListeners();
   }
 
@@ -476,10 +572,12 @@ class SimulationService extends ChangeNotifier {
       shocksDelivered: _shockCount,
       timeToFirstShock: _timeToFirstShock ?? 0,
       medicationsGiven: medicationsGiven,
-      timeToFirstEpinephrine: _timeToFirstEpinephrine ?? 0,
+      timeToFirstEpinephrine:
+          _timeToFirstEpinephrine ?? 0,
       achievedROSC: _patientState.hasROSC,
       totalTimeSeconds: _codeSeconds,
-      reversibleCausesChecked: _reversibleCausesChecked,
+      reversibleCausesChecked:
+          _reversibleCausesChecked,
       airwayUsed: _airwayDevice,
     );
 
@@ -495,6 +593,7 @@ class SimulationService extends ChangeNotifier {
     _codeTimer?.cancel();
     _cprCycleTimer?.cancel();
     _autoCprTimer?.cancel();
+    _log('Scenario ended', EventCategory.info);
     notifyListeners();
   }
 
@@ -505,9 +604,15 @@ class SimulationService extends ChangeNotifier {
     _autoCprTimer?.cancel();
     super.dispose();
   }
+
+  String _fmtSec(int totalSeconds) {
+    final m = totalSeconds ~/ 60;
+    final s = totalSeconds % 60;
+    return '${m.toString().padLeft(2, '0')}:'
+        '${s.toString().padLeft(2, '0')}';
+  }
 }
 
-/// Extension to add lastWhereOrNull to iterables.
 extension _IterableExt<T> on Iterable<T> {
   T? lastWhereOrNull(bool Function(T) test) {
     T? result;
