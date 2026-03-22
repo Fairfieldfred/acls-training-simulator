@@ -10,8 +10,10 @@ import '../widgets/ecg_monitor.dart';
 import '../widgets/event_log_panel.dart';
 import '../widgets/medication_panel.dart';
 import '../widgets/patient_avatar.dart';
+import '../widgets/reference_panel.dart';
 import '../widgets/reversible_causes_panel.dart';
 import '../widgets/timer_display.dart';
+import 'post_rosc_screen.dart';
 import 'results_screen.dart';
 
 class SimulationScreen extends StatefulWidget {
@@ -25,6 +27,8 @@ class SimulationScreen extends StatefulWidget {
 class _SimulationScreenState
     extends State<SimulationScreen> {
   final FocusNode _focusNode = FocusNode();
+  bool _showReference = false;
+  bool _roscNavigated = false;
 
   @override
   void dispose() {
@@ -61,6 +65,22 @@ class _SimulationScreenState
               service.patientState.hasPulse &&
               !service.patientState.hasROSC;
 
+          // Navigate to post-ROSC when ROSC achieved.
+          if (service.patientState.hasROSC &&
+              !_roscNavigated) {
+            _roscNavigated = true;
+            WidgetsBinding.instance
+                .addPostFrameCallback((_) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const PostRoscScreen(),
+                ),
+              );
+            });
+          }
+
           return Scaffold(
             appBar: AppBar(
               title: Text(
@@ -68,6 +88,18 @@ class _SimulationScreenState
                     'ACLS Simulation',
               ),
               actions: [
+                IconButton(
+                  icon: Icon(
+                    _showReference
+                        ? Icons.menu_book
+                        : Icons.menu_book_outlined,
+                  ),
+                  onPressed: () => setState(
+                    () => _showReference =
+                        !_showReference,
+                  ),
+                  tooltip: 'Reference',
+                ),
                 IconButton(
                   icon: Icon(
                     service.isRunning
@@ -81,40 +113,47 @@ class _SimulationScreenState
                 ),
                 IconButton(
                   icon: const Icon(Icons.stop),
-                  onPressed: () =>
-                      _endSimulation(context, service),
+                  onPressed: () => _endSimulation(
+                    context,
+                    service,
+                  ),
                   tooltip: 'End Simulation',
                 ),
               ],
             ),
             body: Column(
               children: [
-                // Keyboard hint bar
                 _KeyboardHintBar(
                   isProtocol: isProtocol,
                 ),
-                // Main content
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding:
+                        const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment:
-                          CrossAxisAlignment.stretch,
+                          CrossAxisAlignment
+                              .stretch,
                       children: [
                         Row(
                           crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                              CrossAxisAlignment
+                                  .start,
                           children: [
                             Expanded(
                               child: ECGMonitor(
                                 rhythm: service
-                                    .patientState.rhythm,
+                                    .patientState
+                                    .rhythm,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(
+                              width: 12,
+                            ),
                             const Expanded(
                               flex: 2,
-                              child: PatientAvatar(),
+                              child:
+                                  PatientAvatar(),
                             ),
                           ],
                         ),
@@ -124,15 +163,19 @@ class _SimulationScreenState
                         if (!isPulsed)
                           const CPRControls(),
                         if (!isPulsed)
-                          const SizedBox(height: 16),
+                          const SizedBox(
+                            height: 16,
+                          ),
                         const DefibrillatorPanel(),
                         const SizedBox(height: 16),
                         const Row(
                           crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                              CrossAxisAlignment
+                                  .start,
                           children: [
                             Expanded(
-                              child: MedicationPanel(),
+                              child:
+                                  MedicationPanel(),
                             ),
                             SizedBox(width: 16),
                             Expanded(
@@ -141,8 +184,15 @@ class _SimulationScreenState
                           ],
                         ),
                         const SizedBox(height: 16),
-                        const ReversibleCausesPanel(),
+                        const
+                            ReversibleCausesPanel(),
                         const SizedBox(height: 16),
+                        if (_showReference)
+                          const ReferencePanel(),
+                        if (_showReference)
+                          const SizedBox(
+                            height: 16,
+                          ),
                         const EventLogPanel(),
                         const SizedBox(height: 80),
                       ],
@@ -171,7 +221,8 @@ class _SimulationScreenState
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () =>
+                Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
@@ -197,7 +248,9 @@ class _SimulationScreenState
 class _KeyboardHintBar extends StatelessWidget {
   final bool isProtocol;
 
-  const _KeyboardHintBar({required this.isProtocol});
+  const _KeyboardHintBar({
+    required this.isProtocol,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -217,9 +270,15 @@ class _KeyboardHintBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           if (!isProtocol) ...[
-            const _KeyChip(label: 'C', action: 'Compress'),
+            const _KeyChip(
+              label: 'C',
+              action: 'Compress',
+            ),
             const SizedBox(width: 12),
-            const _KeyChip(label: 'B', action: 'Breathe'),
+            const _KeyChip(
+              label: 'B',
+              action: 'Breathe',
+            ),
             const SizedBox(width: 12),
           ],
           if (isProtocol)
@@ -231,7 +290,10 @@ class _KeyboardHintBar extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-          const _KeyChip(label: 'Space', action: 'Pause'),
+          const _KeyChip(
+            label: 'Space',
+            action: 'Pause',
+          ),
         ],
       ),
     );
