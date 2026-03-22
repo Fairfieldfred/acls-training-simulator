@@ -1,3 +1,5 @@
+import 'medication_timing_model.dart';
+
 class Medication {
   final String name;
   final String dose;
@@ -12,6 +14,76 @@ class Medication {
     required this.indication,
     this.isQuickAccess = false,
   });
+
+  /// Unique key combining name and dose for tracking.
+  String get key => '${name}_$dose';
+
+  /// AHA 2025 timing rules for this medication.
+  MedicationTiming get timing {
+    if (name == 'Epinephrine') {
+      return const MedicationTiming(
+        medicationName: 'Epinephrine',
+        minIntervalSeconds: 180,
+        clinicalNote: 'Epinephrine every 3-5 minutes '
+            'during cardiac arrest.',
+      );
+    }
+    if (name == 'Amiodarone' && dose == '300 mg') {
+      return const MedicationTiming(
+        medicationName: 'Amiodarone',
+        minIntervalSeconds: 0,
+        maxDoses: 1,
+        requiresShockCount: 3,
+        clinicalNote: 'Amiodarone 300 mg after 3rd '
+            'shock for refractory VF/pVT.',
+      );
+    }
+    if (name == 'Amiodarone' && dose == '150 mg') {
+      return const MedicationTiming(
+        medicationName: 'Amiodarone 2nd',
+        minIntervalSeconds: 300,
+        maxDoses: 1,
+        requiresShockCount: 5,
+        clinicalNote: 'Amiodarone 150 mg after 5th '
+            'shock or 5 min after first dose.',
+      );
+    }
+    if (name == 'Lidocaine') {
+      return const MedicationTiming(
+        medicationName: 'Lidocaine',
+        minIntervalSeconds: 0,
+        maxDoses: 2,
+        requiresShockCount: 3,
+        requiresNoAmiodarone: true,
+        clinicalNote: 'Lidocaine alternative to '
+            'amiodarone. Do not mix.',
+      );
+    }
+    if (name == 'Magnesium Sulfate') {
+      return const MedicationTiming(
+        medicationName: 'Magnesium Sulfate',
+        minIntervalSeconds: 0,
+        maxDoses: 1,
+        requiresRhythm: 'torsades',
+        clinicalNote: 'Magnesium 2 g for torsades '
+            'de pointes only.',
+      );
+    }
+    if (name == 'Atropine') {
+      return const MedicationTiming(
+        medicationName: 'Atropine',
+        minIntervalSeconds: 180,
+        maxDoses: 6,
+        clinicalNote: 'Atropine 0.5 mg q3-5 min, '
+            'max 3 mg. Bradycardia only.',
+      );
+    }
+    return MedicationTiming(
+      medicationName: name,
+      minIntervalSeconds: 0,
+      clinicalNote: '$name: no specific timing rule.',
+    );
+  }
 
   static const epinephrine = Medication(
     name: 'Epinephrine',
