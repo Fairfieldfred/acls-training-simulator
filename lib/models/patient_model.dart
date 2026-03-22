@@ -36,6 +36,21 @@ class PatientState {
     );
   }
 
+  /// Pulsed tachycardia or bradycardia patient (not arrest).
+  static PatientState pulsedRhythm(ECGRhythm rhythm) {
+    final isTachy = rhythm.heartRate > 100;
+    return PatientState(
+      rhythm: rhythm,
+      heartRate: rhythm.heartRate,
+      bloodPressure: isTachy ? '90/60' : '100/65',
+      respiratoryRate: 18,
+      oxygenSaturation: 94,
+      hasPulse: true,
+      isBreathing: true,
+      isConscious: true,
+    );
+  }
+
   static PatientState withROSC() {
     return const PatientState(
       rhythm: ECGRhythm.normalSinus,

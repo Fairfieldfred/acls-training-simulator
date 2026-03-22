@@ -173,8 +173,10 @@ class SimulationService extends ChangeNotifier {
   }) {
     _currentScenario = scenario;
     _trainingConfig = config;
-    _patientState =
-        PatientState.cardiacArrest(scenario.initialRhythm);
+    // Pulsed rhythms start with vitals, not arrest.
+    _patientState = scenario.initialRhythm.hasPulse
+        ? PatientState.pulsedRhythm(scenario.initialRhythm)
+        : PatientState.cardiacArrest(scenario.initialRhythm);
     _codeSeconds = 0;
     _cprCycleSeconds = 0;
     _compressions = 0;
