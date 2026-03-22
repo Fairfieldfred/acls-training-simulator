@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/reversible_causes_model.dart';
 import '../services/simulation_service.dart';
 
@@ -10,9 +11,8 @@ class ReversibleCausesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<SimulationService>(
       builder: (context, service, child) {
-        final checkedCount = service.reversibleCausesChecked.values
-            .where((v) => v)
-            .length;
+        final checkedCount =
+            service.reversibleCausesChecked.values.where((v) => v).length;
 
         return Card(
           child: Padding(
@@ -32,9 +32,8 @@ class ReversibleCausesPanel extends StatelessWidget {
                     ),
                     Chip(
                       label: Text('$checkedCount/12 checked'),
-                      backgroundColor: checkedCount >= 6
-                          ? Colors.green
-                          : Colors.orange,
+                      backgroundColor:
+                          checkedCount >= 6 ? Colors.green : Colors.orange,
                     ),
                   ],
                 ),
@@ -46,11 +45,12 @@ class ReversibleCausesPanel extends StatelessWidget {
                     ExpansionPanel(
                       headerBuilder: (context, isExpanded) {
                         final hCount = ReversibleCause.hCauses
-                            .where((c) => service.reversibleCausesChecked[c.id] ?? false)
+                            .where((c) =>
+                                service.reversibleCausesChecked[c.id] ?? false)
                             .length;
                         return ListTile(
                           title: Text(
-                            'H\'s (${hCount}/${ReversibleCause.hCauses.length})',
+                            'H\'s ($hCount/${ReversibleCause.hCauses.length})',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         );
@@ -59,7 +59,9 @@ class ReversibleCausesPanel extends StatelessWidget {
                         children: ReversibleCause.hCauses.map((cause) {
                           return _CauseCheckbox(
                             cause: cause,
-                            checked: service.reversibleCausesChecked[cause.id] ?? false,
+                            checked:
+                                service.reversibleCausesChecked[cause.id] ??
+                                    false,
                             onChanged: service.isRunning
                                 ? (_) => service.toggleReversibleCause(cause.id)
                                 : null,
@@ -72,11 +74,12 @@ class ReversibleCausesPanel extends StatelessWidget {
                     ExpansionPanel(
                       headerBuilder: (context, isExpanded) {
                         final tCount = ReversibleCause.tCauses
-                            .where((c) => service.reversibleCausesChecked[c.id] ?? false)
+                            .where((c) =>
+                                service.reversibleCausesChecked[c.id] ?? false)
                             .length;
                         return ListTile(
                           title: Text(
-                            'T\'s (${tCount}/${ReversibleCause.tCauses.length})',
+                            'T\'s ($tCount/${ReversibleCause.tCauses.length})',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         );
@@ -85,7 +88,9 @@ class ReversibleCausesPanel extends StatelessWidget {
                         children: ReversibleCause.tCauses.map((cause) {
                           return _CauseCheckbox(
                             cause: cause,
-                            checked: service.reversibleCausesChecked[cause.id] ?? false,
+                            checked:
+                                service.reversibleCausesChecked[cause.id] ??
+                                    false,
                             onChanged: service.isRunning
                                 ? (_) => service.toggleReversibleCause(cause.id)
                                 : null,

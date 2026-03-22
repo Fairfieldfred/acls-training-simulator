@@ -175,7 +175,7 @@ class _PostRoscScreenState extends State<PostRoscScreen>
                           ? Colors.green
                           : Colors.orange,
                     ),
-                    _VitalBox(
+                    const _VitalBox(
                       label: 'HR',
                       value: '75',
                       color: Colors.green,

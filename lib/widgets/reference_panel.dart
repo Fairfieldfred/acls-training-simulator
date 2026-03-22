@@ -41,8 +41,8 @@ class ReferencePanel extends StatelessWidget {
 class _AlgorithmTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(12),
+    return const SingleChildScrollView(
+      padding: EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -58,7 +58,7 @@ class _AlgorithmTab extends StatelessWidget {
             ],
             color: Colors.red,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _AlgoStep(
             title: 'PEA / Asystole (Non-Shockable)',
             steps: [
@@ -70,7 +70,7 @@ class _AlgorithmTab extends StatelessWidget {
             ],
             color: Colors.blue,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _AlgoStep(
             title: 'Tachycardia',
             steps: [
@@ -80,7 +80,7 @@ class _AlgorithmTab extends StatelessWidget {
             ],
             color: Colors.orange,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _AlgoStep(
             title: 'Bradycardia',
             steps: [
@@ -166,8 +166,8 @@ class _AlgoStep extends StatelessWidget {
 class _DrugsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(12),
+    return const SingleChildScrollView(
+      padding: EdgeInsets.all(12),
       child: Column(
         children: [
           _DrugCard(
