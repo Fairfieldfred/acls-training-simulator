@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:acls_simulator/models/scenario_model.dart';
 import 'package:acls_simulator/models/training_config.dart';
 import 'package:acls_simulator/services/simulation_service.dart';
+import 'package:acls_simulator/services/theme_service.dart';
 import 'package:acls_simulator/screens/simulation_screen.dart';
 
 void main() {
@@ -21,8 +22,13 @@ void main() {
     });
 
     Widget buildWidget() {
-      return ChangeNotifierProvider.value(
-        value: service,
+      return MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: service),
+          ChangeNotifierProvider(
+            create: (_) => ThemeService(),
+          ),
+        ],
         child: const MaterialApp(
           home: SimulationScreen(),
         ),

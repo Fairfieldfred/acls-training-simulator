@@ -5,13 +5,13 @@ import 'package:acls_simulator/models/scenario_model.dart';
 void main() {
   group('Scenario', () {
     group('predefined scenarios', () {
-      test('all returns 4 scenarios', () {
-        expect(Scenario.all.length, 4);
+      test('all returns 8 scenarios', () {
+        expect(Scenario.all.length, 8);
       });
 
       test('all scenarios have unique IDs', () {
         final ids = Scenario.all.map((s) => s.id).toSet();
-        expect(ids.length, 4);
+        expect(ids.length, 8);
       });
     });
 

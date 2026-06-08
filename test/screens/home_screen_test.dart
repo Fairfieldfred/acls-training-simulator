@@ -34,10 +34,10 @@ void main() {
       );
     });
 
-    testWidgets('renders Select a Scenario heading', (tester) async {
+    testWidgets('renders Shockable Arrest category', (tester) async {
       await tester.pumpWidget(buildWidget());
       expect(
-        find.text('Select a Scenario'),
+        find.text('Shockable Arrest'),
         findsOneWidget,
       );
     });
